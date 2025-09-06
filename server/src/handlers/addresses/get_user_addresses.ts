@@ -1,10 +1,20 @@
+import { db } from '../../db';
+import { userAddressesTable } from '../../db/schema';
 import { type UserAddress, type AuthContext } from '../../schema';
+import { eq, desc } from 'drizzle-orm';
 
 export async function getUserAddresses(context: AuthContext): Promise<UserAddress[]> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to fetch user's saved addresses:
-    // 1. Query addresses for the authenticated user
-    // 2. Order by is_default (default addresses first)
-    // 3. Return array of user addresses
-    return Promise.resolve([]);
+  try {
+    // Query addresses for the authenticated user, ordered by default status first
+    const results = await db.select()
+      .from(userAddressesTable)
+      .where(eq(userAddressesTable.user_id, context.user_id))
+      .orderBy(desc(userAddressesTable.is_default))
+      .execute();
+
+    return results;
+  } catch (error) {
+    console.error('Failed to fetch user addresses:', error);
+    throw error;
+  }
 }

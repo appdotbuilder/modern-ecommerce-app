@@ -1,15 +1,38 @@
+import { db } from '../../db';
+import { productsTable } from '../../db/schema';
 import { type AuthContext } from '../../schema';
+import { eq } from 'drizzle-orm';
 
 export async function deleteProduct(id: number, context: AuthContext): Promise<boolean> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to delete a product (admin only):
+  try {
     // 1. Verify user has admin role
-    // 2. Check if product exists
-    // 3. Soft delete product (set is_active to false) or hard delete
-    // 4. Return success status
     if (context.role !== 'admin') {
-        throw new Error('Access denied. Admin role required.');
+      throw new Error('Access denied. Admin role required.');
     }
-    
-    return Promise.resolve(true);
+
+    // 2. Check if product exists
+    const existingProduct = await db.select()
+      .from(productsTable)
+      .where(eq(productsTable.id, id))
+      .execute();
+
+    if (existingProduct.length === 0) {
+      throw new Error('Product not found');
+    }
+
+    // 3. Soft delete product (set is_active to false)
+    const result = await db.update(productsTable)
+      .set({
+        is_active: false,
+        updated_at: new Date()
+      })
+      .where(eq(productsTable.id, id))
+      .execute();
+
+    // 4. Return success status
+    return (result.rowCount ?? 0) > 0;
+  } catch (error) {
+    console.error('Product deletion failed:', error);
+    throw error;
+  }
 }

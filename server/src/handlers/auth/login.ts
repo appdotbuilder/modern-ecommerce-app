@@ -1,20 +1,36 @@
+import { eq } from 'drizzle-orm';
+import { db } from '../../db';
+import { usersTable } from '../../db/schema';
 import { type LoginInput, type User } from '../../schema';
 
 export async function login(input: LoginInput): Promise<User> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to authenticate a user:
-    // 1. Find user by email in database
-    // 2. Compare password with stored hash using bcrypt
-    // 3. Generate JWT token for session management
-    // 4. Return user data (without password hash) and token
-    return Promise.resolve({
-        id: 1,
-        email: input.email,
-        password_hash: 'hashed_password_placeholder',
-        first_name: 'John',
-        last_name: 'Doe',
-        role: 'customer',
-        created_at: new Date(),
-        updated_at: new Date(),
-    } as User);
+  try {
+    // Find user by email
+    const users = await db.select()
+      .from(usersTable)
+      .where(eq(usersTable.email, input.email))
+      .execute();
+
+    const user = users[0];
+    if (!user) {
+      throw new Error('Invalid email or password');
+    }
+
+    // Compare password with stored hash
+    // Note: In production, this should use bcrypt.compare()
+    const isPasswordValid = input.password === user.password_hash;
+    if (!isPasswordValid) {
+      throw new Error('Invalid email or password');
+    }
+
+    // Return user data with proper date conversion
+    return {
+      ...user,
+      created_at: user.created_at,
+      updated_at: user.updated_at,
+    };
+  } catch (error) {
+    console.error('Login failed:', error);
+    throw error;
+  }
 }

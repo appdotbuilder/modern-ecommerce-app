@@ -1,20 +1,42 @@
+import { db } from '../../db';
+import { usersTable } from '../../db/schema';
 import { type UpdateProfileInput, type User, type AuthContext } from '../../schema';
+import { eq } from 'drizzle-orm';
 
 export async function updateProfile(input: UpdateProfileInput, context: AuthContext): Promise<User> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to update the current user's profile:
-    // 1. Use user_id from auth context
-    // 2. Update user data in database with provided fields
-    // 3. If email is being updated, check for uniqueness
-    // 4. Return updated user profile (without password hash)
-    return Promise.resolve({
-        id: context.user_id,
-        email: input.email || 'user@example.com',
-        password_hash: 'hashed_password_placeholder',
-        first_name: input.first_name || 'John',
-        last_name: input.last_name || 'Doe',
-        role: context.role,
-        created_at: new Date(),
+  try {
+    // If email is being updated, check for uniqueness
+    if (input.email) {
+      const existingUser = await db.select()
+        .from(usersTable)
+        .where(eq(usersTable.email, input.email))
+        .execute();
+
+      // If email exists and belongs to a different user, throw error
+      if (existingUser.length > 0 && existingUser[0].id !== context.user_id) {
+        throw new Error('Email already exists');
+      }
+    }
+
+    // Update user data in database with provided fields
+    const result = await db.update(usersTable)
+      .set({
+        first_name: input.first_name,
+        last_name: input.last_name,
+        email: input.email,
         updated_at: new Date(),
-    } as User);
+      })
+      .where(eq(usersTable.id, context.user_id))
+      .returning()
+      .execute();
+
+    if (result.length === 0) {
+      throw new Error('User not found');
+    }
+
+    return result[0];
+  } catch (error) {
+    console.error('Profile update failed:', error);
+    throw error;
+  }
 }

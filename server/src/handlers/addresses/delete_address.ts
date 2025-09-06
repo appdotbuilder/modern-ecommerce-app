@@ -1,10 +1,24 @@
+import { db } from '../../db';
+import { userAddressesTable } from '../../db/schema';
 import { type AuthContext } from '../../schema';
+import { eq, and } from 'drizzle-orm';
 
 export async function deleteAddress(addressId: number, context: AuthContext): Promise<boolean> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to delete a user address:
-    // 1. Validate address exists and belongs to authenticated user
-    // 2. Delete address from database
-    // 3. Return success status
-    return Promise.resolve(true);
+  try {
+    // Delete the address, but only if it belongs to the authenticated user
+    const result = await db.delete(userAddressesTable)
+      .where(
+        and(
+          eq(userAddressesTable.id, addressId),
+          eq(userAddressesTable.user_id, context.user_id)
+        )
+      )
+      .execute();
+
+    // Check if any rows were affected (address existed and was deleted)
+    return (result.rowCount ?? 0) > 0;
+  } catch (error) {
+    console.error('Address deletion failed:', error);
+    throw error;
+  }
 }
